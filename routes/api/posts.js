@@ -46,4 +46,70 @@ router.post(
   }
 );
 
+// @route   GET api/posts
+// @desc    Show all posts
+// @access  Private - Must be logged in to view the posts
+router.get('/', auth, async (req, res) => {
+  try {
+    const allPosts = await Post.find().sort({ date: -1 });
+    res.json(allPosts);
+  } catch (err) {
+    console.error(err.message);
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   GET api/posts/:id
+// @desc    Get post by id
+// @access  Private - Must be logged in to view the post
+router.get('/:id', auth, async (req, res) => {
+  try {
+    const post = await Post.findById(req.params.id);
+
+    if (!post) {
+      return res.status(404).json({ msg: 'Post Not found' });
+    }
+
+    res.json(post);
+  } catch (err) {
+    console.error(err.message);
+
+    if (err.kind === 'ObjectId') {
+      return res.status(404).json({ msg: 'Post Not found' });
+    }
+
+    res.status(500).send('Server Error');
+  }
+});
+
+// @route   DELETE api/posts/:id
+// @desc    Delete a post
+// @access  Private - Must be logged in to delete
+router.delete('/:id', auth, async (req, res) => {
+  try {
+    const postToDelete = await Post.findById(req.params.id);
+
+    if (!postToDelete) {
+      return res.status(404).json({ msg: 'Post Not found' });
+    }
+
+    // Check if user trying to delete post is owner of post
+    if (postToDelete.user.toString() !== req.user.id) {
+      return res.status(401).json({ msg: 'Not Authorized' });
+    }
+
+    await postToDelete.remove();
+
+    res.json({ msg: 'Post Deleted' });
+  } catch (err) {
+    console.error(err.message);
+
+    if (err.kind === 'ObjectId') {
+      return res.status(404).json({ msg: 'Post Not found' });
+    }
+
+    res.status(500).send('Server Error');
+  }
+});
+
 module.exports = router;
